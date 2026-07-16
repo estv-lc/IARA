@@ -66,13 +66,13 @@ def baixar_dados_coordenada(dataset_id, var, lat, lon, ano):
 
 # --- BARRA LATERAL ---
 st.sidebar.header("Painel de Controle")
-modo_analise = st.sidebar.radio("Modo de Cobertura:", ["📍 Hotspots Estáticos (Rápido)", "🌐 Qualquer Ponto do Brasil (Tempo Real)"])
+modo_analise = st.sidebar.radio("Modo de Cobertura:", ["📍 Hotspots Estáticos", "🌐 Qualquer Ponto do Brasil"])
 ano_escolhido = st.sidebar.selectbox("Selecione o Ano de Análise:", ["2025", "2026"])
 
 lat_alvo, lon_alvo = 0.0, 0.0
 slug_regiao, bounds = "", []
 
-if modo_analise == "📍 Hotspots Estáticos (Rápido)":
+if modo_analise == "📍 Hotspots Estáticos":
     regiao_escolhida = st.sidebar.selectbox("Selecione a Região:", list(REGIOES.keys()))
     slug_regiao = REGIOES[regiao_escolhida]["slug"]
     bounds = REGIOES[regiao_escolhida]["bounds"]
@@ -88,7 +88,7 @@ else:
 # --- PROCESSAMENTO DOS ARQUIVOS ---
 def carregar_e_processar(variavel, ano):
     info = DATASETS[variavel]
-    if modo_analise == "📍 Hotspots Estáticos (Rápido)":
+    if modo_analise == "📍 Hotspots Estáticos":
         arquivo = f"{info['prefixo']}_{slug_regiao}_{ano}.nc"
         if os.path.exists(arquivo):
             return xr.open_dataset(arquivo), info["var"]
