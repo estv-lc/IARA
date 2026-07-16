@@ -4,10 +4,27 @@ import pandas as pd
 import plotly.express as px
 import os
 import numpy as np
+import copernicusmarine as cm
 
-st.set_page_config(page_title="BioOcean View", layout="wide", page_icon="🌊")
+st.set_page_config(page_title="IARA: Recursos Aquáticos", layout="wide", page_icon="🌊")
 st.title("🌊 IARA: Interface de Análise de Recursos Aquáticos")
-st.markdown("Desenvolvido para a Olimpíada do Oceano (O2) - Monitoramento de Florações Algais Nocivas.")
+st.markdown("Plataforma de Monitoramento Costeiro e Análise Estatística de Parâmetros Oceanográficos.")
+
+# --- BANCO DE DADOS DE DATASETS DO COPERNICUS ---
+DATASETS = {
+    "Clorofila-a (Algas)": {
+        "dataset_id": "cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D",
+        "var": "CHL", "unidade": "mg/m³", "cor": "green", "prefixo": "clorofila"
+    },
+    "Temperatura da Superfície": {
+        "dataset_id": "METOFFICE-GLO-SST-L4-REP-OBS-SST",
+        "var": "analysed_sst", "unidade": "°C", "cor": "red", "prefixo": "temperatura"
+    },
+    "Turbidez (Sedimentos)": {
+        "dataset_id": "cmems_obs-oc_glo_bgc-transp_my_l4-gapfree-multi-4km_P1D",
+        "var": "SPM", "unidade": "g/m³", "cor": "brown", "prefixo": "turbidez"
+    }
+}
 
 REGIOES = {
     "Garopaba - SC (Sul)": {"slug": "garopaba", "bounds": [-48.75, -48.50, -28.15, -27.95]},
@@ -16,19 +33,71 @@ REGIOES = {
     "Foz do Amazonas - AP/PA (Norte)": {"slug": "amazonas", "bounds": [-50.50, -49.50, 0.50, 1.50]}
 }
 
-CATALOGO = {
-    "Clorofila-a (Algas)": {"prefixo": "clorofila", "var": "CHL", "unidade": "mg/m³", "cor": "green"},
-    "Temperatura da Superfície": {"prefixo": "temperatura", "var": "analysed_sst", "unidade": "°C", "cor": "red"},
-    "Turbidez (Sedimentos)": {"prefixo": "turbidez", "var": "SPM", "unidade": "g/m³", "cor": "brown"}
-}
+# --- FUNÇÃO PARA DOWNLOAD DINÂMICO DE COORDENADA ---
+def baixar_dados_coordenada(dataset_id, var, lat, lon, ano):
+    username = st.secrets["COPERNICUS_USERNAME"]
+    password = st.secrets["COPERNICUS_PASSWORD"]
+    
+    nome_arquivo = f"custom_{var}_{lat}_{lon}_{ano}.nc"
+    
+    if os.path.exists(nome_arquivo):
+        return nome_arquivo
+        
+    try:
+        with st.spinner(f"Conectando ao satélite para extrair {var}..."):
+            cm.subset(
+                dataset_id=dataset_id,
+                variables=[var],
+                longitude_min=lon - 0.15,
+                longitude_max=lon + 0.15,
+                latitude_min=lat - 0.15,
+                latitude_max=lat + 0.15,
+                start_datetime=f"{ano}-01-01T00:00:00",
+                end_datetime=f"{ano}-12-31T23:59:59",
+                output_filename=nome_arquivo,
+                username=username,
+                password=password,
+                force_download=True
+            )
+        return nome_arquivo
+    except Exception as e:
+        st.error(f"Erro ao baixar dados do satélite: {e}")
+        return None
 
 # --- BARRA LATERAL ---
 st.sidebar.header("Painel de Controle")
-regiao_escolhida = st.sidebar.selectbox("Selecione a Região:", list(REGIOES.keys()))
+modo_analise = st.sidebar.radio("Modo de Cobertura:", ["📍 Hotspots Estáticos (Rápido)", "🌐 Qualquer Ponto do Brasil (Tempo Real)"])
 ano_escolhido = st.sidebar.selectbox("Selecione o Ano de Análise:", ["2025", "2026"])
 
-slug_regiao = REGIOES[regiao_escolhida]["slug"]
-bounds = REGIOES[regiao_escolhida]["bounds"]
+lat_alvo, lon_alvo = 0.0, 0.0
+slug_regiao, bounds = "", []
+
+if modo_analise == "📍 Hotspots Estáticos (Rápido)":
+    regiao_escolhida = st.sidebar.selectbox("Selecione a Região:", list(REGIOES.keys()))
+    slug_regiao = REGIOES[regiao_escolhida]["slug"]
+    bounds = REGIOES[regiao_escolhida]["bounds"]
+    lat_alvo = (bounds[2] + bounds[3]) / 2
+    lon_alvo = (bounds[0] + bounds[1]) / 2
+else:
+    st.sidebar.markdown("### Coordenadas do Brasil")
+    lat_alvo = st.sidebar.number_input("Latitude (Ex: -23.0 para RJ):", min_value=-35.0, max_value=5.0, value=-23.00, step=0.1)
+    lon_alvo = st.sidebar.number_input("Longitude (Ex: -43.1 para RJ):", min_value=-55.0, max_value=-30.0, value=-43.10, step=0.1)
+    if st.sidebar.button("📡 Buscar Novos Dados do Satélite"):
+        st.sidebar.success("Novas coordenadas registradas! Aguarde o processamento.")
+
+# --- PROCESSAMENTO DOS ARQUIVOS ---
+def carregar_e_processar(variavel, ano):
+    info = DATASETS[variavel]
+    if modo_analise == "📍 Hotspots Estáticos (Rápido)":
+        arquivo = f"{info['prefixo']}_{slug_regiao}_{ano}.nc"
+        if os.path.exists(arquivo):
+            return xr.open_dataset(arquivo), info["var"]
+    else:
+        
+        arquivo = baixar_dados_coordenada(info["dataset_id"], info["var"], lat_alvo, lon_alvo, ano)
+        if arquivo and os.path.exists(arquivo):
+            return xr.open_dataset(arquivo), info["var"]
+    return None, None
 
 tab_series, tab_correlacao = st.tabs(["📈 Séries Temporais", "📊 Análise de Correlação"])
 
@@ -36,169 +105,102 @@ tab_series, tab_correlacao = st.tabs(["📈 Séries Temporais", "📊 Análise d
 # ABA 1: SÉRIES TEMPORAIS INDIVIDUAIS
 # ==========================================
 with tab_series:
-    variavel_escolhida = st.selectbox("Selecione a Variável para Visualização Diária:", list(CATALOGO.keys()))
-    info = CATALOGO[variavel_escolhida]
-    arquivo = f"{info['prefixo']}_{slug_regiao}_{ano_escolhido}.nc"
-    
-    is_temp_2026 = (variavel_escolhida == "Temperatura da Superfície" and ano_escolhido == "2026")
-    is_amazonas_turbidez = (variavel_escolhida == "Turbidez (Sedimentos)" and regiao_escolhida == "Foz do Amazonas - AP/PA (Norte)")
+    variavel_escolhida = st.selectbox("Selecione a Variável para Visualização Diária:", list(DATASETS.keys()))
     
     col_dados, col_mapa = st.columns([2, 1])
     
     with col_mapa:
         st.markdown("### 📍 Área de Monitoramento")
-        lat_center = (bounds[2] + bounds[3]) / 2
-        lon_center = (bounds[0] + bounds[1]) / 2
-        df_mapa = pd.DataFrame({'latitude': [lat_center], 'longitude': [lon_center]})
+        df_mapa = pd.DataFrame({'latitude': [lat_alvo], 'longitude': [lon_alvo]})
         st.map(df_mapa)
         
     with col_dados:
-        if os.path.exists(arquivo):
-            ds = xr.open_dataset(arquivo)
-            dados_brutos = ds[info["var"]]
+        ds, var_nome = carregar_e_processar(variavel_escolhida, ano_escolhido)
+        if ds is not None:
+            dados_brutos = ds[var_nome]
             
             if "Temperatura" in variavel_escolhida and float(dados_brutos.mean(skipna=True)) > 200:
                 dados_brutos = dados_brutos - 273.15
                 
             serie_diaria = dados_brutos.mean(dim=['latitude', 'longitude'], skipna=True)
-            df = serie_diaria.to_dataframe().reset_index().dropna(subset=[info["var"]])
+            df = serie_diaria.to_dataframe().reset_index().dropna()
             
             if not df.empty:
-                media = df[info["var"]].mean()
-                maximo = df[info["var"]].max()
-                minimo = df[info["var"]].min()
+                media = df[var_nome].mean()
+                maximo = df[var_nome].max()
+                minimo = df[var_nome].min()
                 
-                st.subheader(f"📊 Diagnóstico: {variavel_escolhida} em {regiao_escolhida} ({ano_escolhido})")
+                st.subheader(f"📊 Diagnóstico: {variavel_escolhida}")
                 
                 col_m1, col_m2, col_m3 = st.columns(3)
-                col_m1.metric("Média do Período", f"{media:.2f} {info['unidade']}")
-                col_m2.metric("Pico Máximo", f"{maximo:.2f} {info['unidade']}", delta="Anomalia" if maximo > media*2 else "Normal", delta_color="inverse")
-                col_m3.metric("Valor Mínimo", f"{minimo:.2f} {info['unidade']}")
+                col_m1.metric("Média do Período", f"{media:.2f} {DATASETS[variavel_escolhida]['unidade']}")
+                col_m2.metric("Pico Máximo", f"{maximo:.2f} {DATASETS[variavel_escolhida]['unidade']}")
+                col_m3.metric("Valor Mínimo", f"{minimo:.2f} {DATASETS[variavel_escolhida]['unidade']}")
                 
-                if is_temp_2026 or is_amazonas_turbidez:
-                    st.markdown("### 📈 Evolução Temporal Diária <span style='color:red;'>*</span>", unsafe_allow_html=True)
-                else:
-                    st.markdown("### 📈 Evolução Temporal Diária")
-                
-                fig = px.line(df, x="time", y=info["var"], 
-                              labels={"time": "Data", info["var"]: f"Concentração ({info['unidade']})"},
-                              color_discrete_sequence=[info["cor"]], markers=True)
-                fig.update_layout(hovermode="x unified", margin=dict(l=0, r=0, t=30, b=0))
+                fig = px.line(df, x="time", y=var_nome, 
+                              labels={"time": "Data", var_nome: f"Concentração ({DATASETS[variavel_escolhida]['unidade']})"},
+                              color_discrete_sequence=[DATASETS[variavel_escolhida]["cor"]], markers=True)
                 st.plotly_chart(fig, use_container_width=True)
-                
-                if is_temp_2026:
-                    st.info(
-                        "**Nota Científica (*):** Para garantir o máximo rigor acadêmico, esta plataforma utiliza dados térmicos "
-                        "Reprocessados (REP). Devido ao processo de calibração e validação manual dos satélites com boias oceânicas "
-                        "reais pela agência Copernicus, há uma defasagem natural de processamento de alguns meses, limitando a "
-                        "série histórica de 2026 até o dia 31 de Março."
-                    )
-                
-                if is_amazonas_turbidez:
-                    st.info(
-                        "**Nota Técnica (*):** Em águas de estuário hiperturbidas (Águas de Caso 2), como a pluma do Rio Amazonas, "
-                        "a reflectância óptica atinge a saturação física. Para mitigar artefatos e distorções instrumentais, o algoritmo "
-                        "global de turbidez (SPM) do Copernicus adota um limite máximo de corte (teto metodológico) de 100 g/m³."
-                    )
             ds.close()
         else:
-            st.error(f"Erro: O arquivo de {variavel_escolhida} para a região de {regiao_escolhida} ({ano_escolhido}) não foi localizado no diretório local.")
+            st.warning("Dados não disponíveis localmente ou aguardando requisição ao satélite.")
 
 # ==========================================
 # ABA 2: ANÁLISE DE CORRELAÇÃO DE VARIÁVEIS
-# ==========================================
+# =========================================
 with tab_correlacao:
     st.subheader("📊 Cruzamento Estatístico de Dados Oceânicos")
-    st.markdown("Selecione duas variáveis distintas para analisar a dinâmica de interação e dependência estatística entre elas.")
-    
     col_sel_x, col_sel_y = st.columns(2)
     with col_sel_x:
-        var_x = st.selectbox("Variável Independente (Eixo X):", list(CATALOGO.keys()), index=1)
+        var_x = st.selectbox("Variável Independente (Eixo X):", list(DATASETS.keys()), index=1)
     with col_sel_y:
-        var_y = st.selectbox("Variável Dependente (Eixo Y):", list(CATALOGO.keys()), index=0)
+        var_y = st.selectbox("Variável Dependente (Eixo Y):", list(DATASETS.keys()), index=0)
         
     if var_x == var_y:
-        st.warning("Aviso: Selecione duas variáveis distintas para calcular a correlação.")
+        st.warning("Aviso: Selecione duas variáveis distintas.")
     else:
-        info_x = CATALOGO[var_x]
-        info_y = CATALOGO[var_y]
+        ds_x, var_nome_x = carregar_e_processar(var_x, ano_escolhido)
+        ds_y, var_nome_y = carregar_e_processar(var_y, ano_escolhido)
         
-        arq_x = f"{info_x['prefixo']}_{slug_regiao}_{ano_escolhido}.nc"
-        arq_y = f"{info_y['prefixo']}_{slug_regiao}_{ano_escolhido}.nc"
-        
-        if os.path.exists(arq_x) and os.path.exists(arq_y):
-            # Processamento Eixo X com renomeação padronizada
-            ds_x = xr.open_dataset(arq_x)
-            dados_x = ds_x[info_x["var"]]
+        if ds_x is not None and ds_y is not None:
+            # Processamento Eixo X
+            dados_x = ds_x[var_nome_x]
             if "Temperatura" in var_x and float(dados_x.mean(skipna=True)) > 200:
                 dados_x = dados_x - 273.15
             df_x = dados_x.mean(dim=['latitude', 'longitude'], skipna=True).to_dataframe().reset_index()
-            df_x = df_x[["time", info_x["var"]]].dropna()
-            df_x.rename(columns={info_x["var"]: "valor_x"}, inplace=True)
+            df_x = df_x[["time", var_nome_x]].dropna().rename(columns={var_nome_x: "valor_x"})
             
-            # Processamento Eixo Y com renomeação padronizada
-            ds_y = xr.open_dataset(arq_y)
-            dados_y = ds_y[info_y["var"]]
+            # Processamento Eixo Y
+            dados_y = ds_y[var_nome_y]
             if "Temperatura" in var_y and float(dados_y.mean(skipna=True)) > 200:
                 dados_y = dados_y - 273.15
             df_y = dados_y.mean(dim=['latitude', 'longitude'], skipna=True).to_dataframe().reset_index()
-            df_y = df_y[["time", info_y["var"]]].dropna()
-            df_y.rename(columns={info_y["var"]: "valor_y"}, inplace=True)
+            df_y = df_y[["time", var_nome_y]].dropna().rename(columns={var_nome_y: "valor_y"})
             
-            # Fusão baseada na dimensão temporal
             df_merged = pd.merge(df_x, df_y, on="time").dropna()
             
             if not df_merged.empty:
-                # Cálculo estatístico
                 r_val = df_merged["valor_x"].corr(df_merged["valor_y"])
-                
-                abs_r = abs(r_val)
-                if abs_r < 0.3:
-                    desc_corr = "Desprezível ou Muito Fraca"
-                elif abs_r < 0.5:
-                    desc_corr = "Fraca"
-                elif abs_r < 0.7:
-                    desc_corr = "Moderada"
-                else:
-                    desc_corr = "Forte a Muito Forte"
-                    
-                sinal_corr = "Diretamente Proporcional (Positiva)" if r_val > 0 else "Inversamente Proporcional (Negativa)"
                 
                 col_r, col_desc = st.columns([1, 2])
                 with col_r:
                     st.metric("Coeficiente de Pearson (R)", f"{r_val:.3f}")
                 with col_desc:
-                    st.markdown(f"**Grau de Associação:** Correlação {desc_corr}")
-                    st.markdown(f"**Comportamento:** Relação {sinal_corr}")
+                    st.markdown(f"**Grau de Associação:** Coeficiente calculando o acoplamento ecológico entre as variáveis.")
                 
-                # Plotagem do gráfico
-                x_vals = df_merged["valor_x"].values
-                y_vals = df_merged["valor_y"].values
+                # Gráfico
+                fig_scatter = px.scatter(df_merged, x="valor_x", y="valor_y", hover_data={"time": True},
+                                         labels={"valor_x": f"{var_x}", "valor_y": f"{var_y}"})
                 
-                fig_scatter = px.scatter(
-                    df_merged, x="valor_x", y="valor_y",
-                    hover_data={"time": True},
-                    labels={"valor_x": f"{var_x} ({info_x['unidade']})", "valor_y": f"{var_y} ({info_y['unidade']})"},
-                    title=f"Dispersão: {var_x} vs. {var_y} ({regiao_escolhida})"
-                )
-                
-                slope, intercept = np.polyfit(x_vals, y_vals, 1)
-                x_trend = np.linspace(x_vals.min(), x_vals.max(), 100)
+                slope, intercept = np.polyfit(df_merged["valor_x"].values, df_merged["valor_y"].values, 1)
+                x_trend = np.linspace(df_merged["valor_x"].min(), df_merged["valor_x"].max(), 100)
                 y_trend = slope * x_trend + intercept
                 
                 df_trend = pd.DataFrame({"valor_x": x_trend, "valor_y": y_trend})
-                
                 fig_trend = px.line(df_trend, x="valor_x", y="valor_y", color_discrete_sequence=["#FF8C00"])
-                fig_trend.data[0].name = "Tendência Linear"
-                fig_trend.data[0].showlegend = True
-                
                 fig_scatter.add_trace(fig_trend.data[0])
                 st.plotly_chart(fig_scatter, use_container_width=True)
-                
             else:
-                st.warning("Não há dados sobrepostos suficientes para realizar o cruzamento estatístico para este período.")
-                
+                st.warning("Cruzamento indisponível.")
             ds_x.close()
             ds_y.close()
-        else:
-            st.error("Erro: Ambas as variáveis selecionadas precisam estar previamente baixadas no diretório para esta região e ano.")
