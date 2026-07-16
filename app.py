@@ -88,8 +88,8 @@ else:
 # --- PROCESSAMENTO DOS ARQUIVOS (LOCAL OU NUVEM) ---
 def carregar_e_processar(variavel, ano):
     info = DATASETS[variavel]
-    if modo_analise == "📍 Hotspots Estáticos":
-        arquivo = f"{info['prefixo']}_{slug_regiao}_{ano}.nc"
+    if modo_analise == "📍 Hotspots Estáticos (Rápido)":
+        arquivo = f"dados/{info['prefixo']}_{slug_regiao}_{ano}.nc"
         if os.path.exists(arquivo):
             return xr.open_dataset(arquivo), info["var"]
     else:
