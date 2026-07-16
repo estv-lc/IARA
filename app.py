@@ -8,7 +8,7 @@ import copernicusmarine as cm
 
 st.set_page_config(page_title="IARA: Recursos Aquáticos", layout="wide", page_icon="🌊")
 st.title("🌊 IARA: Interface de Análise de Recursos Aquáticos")
-st.markdown("Plataforma de Monitoramento Costeiro e Análise Estatística de Parâmetros Oceanográficos.")
+st.markdown("Plataforma de Monitoramento Costeiro e Análise Estatística de Parâeram Oceanográficos.")
 
 # --- BANCO DE DADOS DE DATASETS DO COPERNICUS ---
 DATASETS = {
@@ -33,7 +33,7 @@ REGIOES = {
     "Foz do Amazonas - AP/PA (Norte)": {"slug": "amazonas", "bounds": [-50.50, -49.50, 0.50, 1.50]}
 }
 
-# --- FUNÇÃO PARA DOWNLOAD DINÂMICO DE COORDENADA ---
+# --- DOWNLOAD DINÂMICO DE COORDENADA ---
 def baixar_dados_coordenada(dataset_id, var, lat, lon, ano):
     username = st.secrets["COPERNICUS_USERNAME"]
     password = st.secrets["COPERNICUS_PASSWORD"]
@@ -48,10 +48,10 @@ def baixar_dados_coordenada(dataset_id, var, lat, lon, ano):
             cm.subset(
                 dataset_id=dataset_id,
                 variables=[var],
-                longitude_min=lon - 0.15,
-                longitude_max=lon + 0.15,
-                latitude_min=lat - 0.15,
-                latitude_max=lat + 0.15,
+                minimum_longitude=lon - 0.15,
+                maximum_longitude=lon + 0.15,
+                minimum_latitude=lat - 0.15,
+                maximum_latitude=lat + 0.15,
                 start_datetime=f"{ano}-01-01T00:00:00",
                 end_datetime=f"{ano}-12-31T23:59:59",
                 output_filename=nome_arquivo,
@@ -85,7 +85,7 @@ else:
     if st.sidebar.button("📡 Buscar Novos Dados do Satélite"):
         st.sidebar.success("Novas coordenadas registradas! Aguarde o processamento.")
 
-# --- PROCESSAMENTO DOS ARQUIVOS ---
+# --- PROCESSAMENTO DOS ARQUIVOS (LOCAL OU NUVEM) ---
 def carregar_e_processar(variavel, ano):
     info = DATASETS[variavel]
     if modo_analise == "📍 Hotspots Estáticos":
@@ -93,7 +93,6 @@ def carregar_e_processar(variavel, ano):
         if os.path.exists(arquivo):
             return xr.open_dataset(arquivo), info["var"]
     else:
-        
         arquivo = baixar_dados_coordenada(info["dataset_id"], info["var"], lat_alvo, lon_alvo, ano)
         if arquivo and os.path.exists(arquivo):
             return xr.open_dataset(arquivo), info["var"]
@@ -147,7 +146,7 @@ with tab_series:
 
 # ==========================================
 # ABA 2: ANÁLISE DE CORRELAÇÃO DE VARIÁVEIS
-# =========================================
+# ==========================================
 with tab_correlacao:
     st.subheader("📊 Cruzamento Estatístico de Dados Oceânicos")
     col_sel_x, col_sel_y = st.columns(2)
