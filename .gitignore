@@ -1,4 +1,7 @@
-*.nc
+# Ignorar apenas os arquivos gerados em tempo real na nuvem
+custom_*.nc
+
+# Ignorar pastas de sistema e cache
 __pycache__/
 .ipynb_checkpoints/
 venv/
