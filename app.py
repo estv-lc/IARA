@@ -8,7 +8,7 @@ import copernicusmarine as cm
 
 st.set_page_config(page_title="IARA: Recursos Aquáticos", layout="wide", page_icon="🌊")
 st.title("🌊 IARA: Interface de Análise de Recursos Aquáticos")
-st.markdown("Plataforma de Monitoramento Costeiro e Análise Estatística de Parâeram Oceanográficos.")
+st.markdown("Plataforma de Monitoramento Costeiro e Análise Estatística de Parâmetros Oceanográficos.")
 
 # --- BANCO DE DADOS DE DATASETS DO COPERNICUS ---
 DATASETS = {
@@ -21,7 +21,8 @@ DATASETS = {
         "var": "analysed_sst", "unidade": "°C", "cor": "red", "prefixo": "temperatura"
     },
     "Turbidez (Sedimentos)": {
-        "dataset_id": "cmems_obs-oc_glo_bgc-transp_my_l4-gapfree-multi-4km_P1D",
+        # DATASET CORRIGIDO PARA A VARIÁVEL SPM
+        "dataset_id": "cmems_obs-oc_glo_bgc-transp_my_l3-multi-4km_P1D",
         "var": "SPM", "unidade": "g/m³", "cor": "brown", "prefixo": "turbidez"
     }
 }
@@ -33,7 +34,7 @@ REGIOES = {
     "Foz do Amazonas - AP/PA (Norte)": {"slug": "amazonas", "bounds": [-50.50, -49.50, 0.50, 1.50]}
 }
 
-# --- DOWNLOAD DINÂMICO DE COORDENADA ---
+# --- FUNÇÃO PARA DOWNLOAD DINÂMICO DE COORDENADA ---
 def baixar_dados_coordenada(dataset_id, var, lat, lon, ano):
     username = st.secrets["COPERNICUS_USERNAME"]
     password = st.secrets["COPERNICUS_PASSWORD"]
@@ -88,7 +89,7 @@ else:
 # --- PROCESSAMENTO DOS ARQUIVOS (LOCAL OU NUVEM) ---
 def carregar_e_processar(variavel, ano):
     info = DATASETS[variavel]
-    if modo_analise == "📍 Hotspots Estáticos (Rápido)":
+    if modo_analise == "📍 Hotspots Estáticos":
         arquivo = f"dados/{info['prefixo']}_{slug_regiao}_{ano}.nc"
         if os.path.exists(arquivo):
             return xr.open_dataset(arquivo), info["var"]
@@ -162,14 +163,12 @@ with tab_correlacao:
         ds_y, var_nome_y = carregar_e_processar(var_y, ano_escolhido)
         
         if ds_x is not None and ds_y is not None:
-            # Processamento Eixo X
             dados_x = ds_x[var_nome_x]
             if "Temperatura" in var_x and float(dados_x.mean(skipna=True)) > 200:
                 dados_x = dados_x - 273.15
             df_x = dados_x.mean(dim=['latitude', 'longitude'], skipna=True).to_dataframe().reset_index()
             df_x = df_x[["time", var_nome_x]].dropna().rename(columns={var_nome_x: "valor_x"})
             
-            # Processamento Eixo Y
             dados_y = ds_y[var_nome_y]
             if "Temperatura" in var_y and float(dados_y.mean(skipna=True)) > 200:
                 dados_y = dados_y - 273.15
@@ -187,7 +186,6 @@ with tab_correlacao:
                 with col_desc:
                     st.markdown(f"**Grau de Associação:** Coeficiente calculando o acoplamento ecológico entre as variáveis.")
                 
-                # Gráfico
                 fig_scatter = px.scatter(df_merged, x="valor_x", y="valor_y", hover_data={"time": True},
                                          labels={"valor_x": f"{var_x}", "valor_y": f"{var_y}"})
                 
