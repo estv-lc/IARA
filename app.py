@@ -10,7 +10,7 @@ st.set_page_config(page_title="IARA: Recursos Aquáticos", layout="wide", page_i
 st.title("🌊 IARA: Interface de Análise de Recursos Aquáticos")
 st.markdown("Plataforma de Monitoramento Costeiro e Análise Estatística de Parâmetros Oceanográficos.")
 
-# --- BANCO DE DADOS DE DATASETS DO COPERNICUS ---
+# --- BANCO DE DADOS DO COPERNICUS ---
 DATASETS = {
     "Clorofila-a (Algas)": {
         "dataset_id": "cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D",
@@ -21,7 +21,6 @@ DATASETS = {
         "var": "analysed_sst", "unidade": "°C", "cor": "red", "prefixo": "temperatura"
     },
     "Turbidez (Sedimentos)": {
-        # DATASET CORRIGIDO PARA A VARIÁVEL SPM
         "dataset_id": "cmems_obs-oc_glo_bgc-transp_my_l3-multi-4km_P1D",
         "var": "SPM", "unidade": "g/m³", "cor": "brown", "prefixo": "turbidez"
     }
@@ -71,7 +70,7 @@ modo_analise = st.sidebar.radio("Modo de Cobertura:", ["📍 Hotspots Estáticos
 ano_escolhido = st.sidebar.selectbox("Selecione o Ano de Análise:", ["2025", "2026"])
 
 lat_alvo, lon_alvo = 0.0, 0.0
-slug_regiao, bounds = "", []
+slug_regiao, bounds, regiao_escolhida = "", [], ""
 
 if modo_analise == "📍 Hotspots Estáticos":
     regiao_escolhida = st.sidebar.selectbox("Selecione a Região:", list(REGIOES.keys()))
@@ -86,7 +85,7 @@ else:
     if st.sidebar.button("📡 Buscar Novos Dados do Satélite"):
         st.sidebar.success("Novas coordenadas registradas! Aguarde o processamento.")
 
-# --- PROCESSAMENTO DOS ARQUIVOS (LOCAL OU NUVEM) ---
+# --- PROCESSAMENTO DOS ARQUIVOS ---
 def carregar_e_processar(variavel, ano):
     info = DATASETS[variavel]
     if modo_analise == "📍 Hotspots Estáticos":
@@ -106,6 +105,14 @@ tab_series, tab_correlacao = st.tabs(["📈 Séries Temporais", "📊 Análise d
 # ==========================================
 with tab_series:
     variavel_escolhida = st.selectbox("Selecione a Variável para Visualização Diária:", list(DATASETS.keys()))
+    
+    # Condições para ativação dos avisos técnicos e científicos
+    is_temp_2026 = (variavel_escolhida == "Temperatura da Superfície" and ano_escolhido == "2026")
+    is_amazonas_turbidez = (
+        variavel_escolhida == "Turbidez (Sedimentos)" and 
+        modo_analise == "📍 Hotspots Estáticos" and 
+        regiao_escolhida == "Foz do Amazonas - AP/PA (Norte)"
+    )
     
     col_dados, col_mapa = st.columns([2, 1])
     
@@ -130,7 +137,12 @@ with tab_series:
                 maximo = df[var_nome].max()
                 minimo = df[var_nome].min()
                 
-                st.subheader(f"📊 Diagnóstico: {variavel_escolhida}")
+                titulo_diag = f"📊 Diagnóstico: {variavel_escolhida}"
+                if modo_analise == "📍 Hotspots Estáticos":
+                    titulo_diag += f" em {regiao_escolhida} ({ano_escolhido})"
+                else:
+                    titulo_diag += f" ({ano_escolhido})"
+                st.subheader(titulo_diag)
                 
                 col_m1, col_m2, col_m3 = st.columns(3)
                 col_m1.metric("Média do Período", f"{media:.2f} {DATASETS[variavel_escolhida]['unidade']}")
@@ -141,6 +153,22 @@ with tab_series:
                               labels={"time": "Data", var_nome: f"Concentração ({DATASETS[variavel_escolhida]['unidade']})"},
                               color_discrete_sequence=[DATASETS[variavel_escolhida]["cor"]], markers=True)
                 st.plotly_chart(fig, use_container_width=True)
+                
+                # Exibição condicional dos avisos metodológicos
+                if is_temp_2026:
+                    st.info(
+                        "**Nota (*):** Para garantir o máximo rigor acadêmico, esta plataforma utiliza dados térmicos "
+                        "Reprocessados (REP). Devido ao processo de calibração e validação manual dos satélites com boias oceânicas "
+                        "reais pela agência Copernicus, há uma defasagem natural de processamento de alguns meses, limitando a "
+                        "série histórica de 2026 até o dia 31 de Março."
+                    )
+                
+                if is_amazonas_turbidez:
+                    st.info(
+                        "**Nota (*):** Em águas de estuário hiperturbidas (Águas de Caso 2), como a pluma do Rio Amazonas, "
+                        "a reflectância óptica atinge a saturação física. Para mitigar distorções instrumentais, o algoritmo "
+                        "global de turbidez (SPM) do Copernicus adota um limite máximo de corte (teto metodológico) de 100 g/m³."
+                    )
             ds.close()
         else:
             st.warning("Dados não disponíveis localmente ou aguardando requisição ao satélite.")
