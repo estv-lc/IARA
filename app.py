@@ -106,13 +106,15 @@ tab_series, tab_correlacao = st.tabs(["📈 Séries Temporais", "📊 Análise d
 with tab_series:
     variavel_escolhida = st.selectbox("Selecione a Variável para Visualização Diária:", list(DATASETS.keys()))
     
-    # Condições para ativação dos avisos técnicos e científicos
+    # Validação das condições especiais
     is_temp_2026 = (variavel_escolhida == "Temperatura da Superfície" and ano_escolhido == "2026")
     is_amazonas_turbidez = (
         variavel_escolhida == "Turbidez (Sedimentos)" and 
         modo_analise == "📍 Hotspots Estáticos" and 
         regiao_escolhida == "Foz do Amazonas - AP/PA (Norte)"
     )
+    
+    asterisco = " *" if (is_temp_2026 or is_amazonas_turbidez) else ""
     
     col_dados, col_mapa = st.columns([2, 1])
     
@@ -137,7 +139,7 @@ with tab_series:
                 maximo = df[var_nome].max()
                 minimo = df[var_nome].min()
                 
-                titulo_diag = f"📊 Diagnóstico: {variavel_escolhida}"
+                titulo_diag = f"📊 Diagnóstico: {variavel_escolhida}{asterisco}"
                 if modo_analise == "📍 Hotspots Estáticos":
                     titulo_diag += f" em {regiao_escolhida} ({ano_escolhido})"
                 else:
@@ -154,7 +156,7 @@ with tab_series:
                               color_discrete_sequence=[DATASETS[variavel_escolhida]["cor"]], markers=True)
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Exibição condicional dos avisos metodológicos
+                # Exibição condicional das notas
                 if is_temp_2026:
                     st.info(
                         "**Nota (*):** Para garantir o máximo rigor acadêmico, esta plataforma utiliza dados térmicos "
@@ -166,7 +168,7 @@ with tab_series:
                 if is_amazonas_turbidez:
                     st.info(
                         "**Nota (*):** Em águas de estuário hiperturbidas (Águas de Caso 2), como a pluma do Rio Amazonas, "
-                        "a reflectância óptica atinge a saturação física. Para mitigar distorções instrumentais, o algoritmo "
+                        "a reflectância óptica atinge a saturação física. Para mitigar artefatos e distorções instrumentais, o algoritmo "
                         "global de turbidez (SPM) do Copernicus adota um limite máximo de corte (teto metodológico) de 100 g/m³."
                     )
             ds.close()
