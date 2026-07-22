@@ -1,32 +1,32 @@
 # IARA: Interface de Análise de Recursos Aquáticos 
 
-A **IARA** é uma plataforma de sensoriamento remoto e análise estatística voltada ao monitoramento de parâmetros oceanográficos e à detecção de anomalias ambientais no litoral brasileiro. Desenvolvido para a **Olimpíada do Oceano (O2)** e como projeto de validação acadêmica, o sistema cruza dados biogeoquímicos e físicos para identificar fatores que influenciam a ocorrência de Florações Algais Nocivas (FANs).
+A **IARA** é uma plataforma que associa dados de sensoriamento remoto e permite uma análise estatística voltado ao monitoramento de condições oceanográficas e à possível detecção de anomalias na rede hidrográfica brasileira. Desenvolvido para a **Olímpiada do Oceano (02)**, o sistema cruza dados biológicos, geológicos, físicos e químicos para identificar fatores que possivelmente influenciem florações algais nocivas (FANs).
 
-## Funcionalidades Principais
+## Funcionalidades principais
 
-* **Monitoramento de Hotspots Nacionais:** Cobertura parametrizada para quatro regiões estratégicas:
-  * Garopaba (SC) - Dinâmica de ressurgência e águas temperadas.
-  * Baía de Guanabara (RJ) - Sistema estuarino eutrofizado por pressões antrópicas.
+* **Monitoramento de hotspots nacionais:** Cobertura para quatro regiões estratégicas:
+  * Garopaba (SC) - Dinâmica de ressurgência em águas temperadas.
+  * Baía de Guanabara (RJ) - Sistema de estuário eutrofizado por pressões antrópicas.
   * Parque Nacional de Abrolhos (BA) - Sensibilidade térmica em ecossistemas de corais.
-  * Foz do Amazonas (AP/PA) - Pluma estuarina de alta turbidez.
-* **Análise Multifatorial:** Processamento de séries temporais diárias de Clorofila-a ($CHL$), Temperatura da Superfície do Mar ($SST$) e Turbidez ($SPM$).
-* **Modelagem Estatística Dinâmica:** Cálculo em tempo real do Coeficiente de Correlação de Pearson ($R$) e ajuste de regressão linear para avaliar a dependência biofísica entre variáveis.
-* **Filtros de Rigor Científico:** Tratamento ativo de limitações instrumentais, como a saturação óptica em Águas de Caso 2 (Foz do Amazonas) e transição de conjuntos de dados térmicos (REP vs NRT).
+  * Foz do Amazonas (AP/PA) - Pluma em estuário de alta turbidez.
+* **Análise multifatorial:** Processamento de séries temporais de clorofila-a, temperatura da superfície do mar e turbidez.
+* **Modelagem estatística:** Cálculo do coeficiente de correlação de pearson e ajuste de regressão linear para avaliar a possível dependência entre variáveis.
+* **Filtros de rigor:** Tratamento de limitações instrumentais, como a saturação óptica em águas de caso 2 (Foz do Amazonas) e o tempo de coleta de dados térmicos (REP).
 
-## Tecnologias Utilizadas
+## Tecnologias utilizadas
 
 * **Linguagem:** Python
-* **Acesso a Dados:** `copernicusmarine` (API oficial do Copernicus Marine Service)
-* **Processamento de Matrizes Multidimensionais:** `xarray` e `netCDF4`
-* **Manipulação e Estatística:** `pandas`, `numpy` e `scipy`
-* **Visualização de Dados:** `plotly` (gráficos dinâmicos) e `streamlit` (interface web)
+* **Acesso a dados:** `copernicusmarine` (API do Copernicus Marine Service)
+* **Processamento de matrizes multidimensionais:** `xarray` e `netCDF4`
+* **Manipulação e estatística:** `pandas`, `numpy` e `scipy`
+* **Visualização de dados:** `plotly` (gráficos) e `streamlit` (interface web)
 
-## Como Executar o Projeto Localmente
+## Como executar o projeto localmente
 
 ### 1. Pré-requisitos
-Certifique-se de ter o Python 3.10+ instalado em sua máquina.
+Certifique-se de ter o Python 3.10+ instalado.
 
-### 2. Clonar o Repositório
+### 2. Clonar o repositório
 ```bash
-git clone [https://github.com/](https://github.com/)[seu-usuario]/IARA.git
+git clone [https://github.com/](https://github.com/)[estv-lc]/IARA.git
 cd IARA
