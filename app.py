@@ -7,15 +7,15 @@ import xarray as xr
 import copernicusmarine as cm
 
 st.set_page_config(
-    page_title="IARA: Recursos Aquáticos",
+    page_title="IARA | Recursos Aquáticos",
     layout="wide",
     page_icon="🌊"
 )
 
 st.title("🌊 IARA: Interface de Análise de Recursos Aquáticos")
-st.markdown("Plataforma de Monitoramento Costeiro e Análise Estatística de Parâmetros Oceanográficos.")
+st.markdown("Plataforma de monitoramento costeiro e análise estatística de parâmetros oceanográficos.")
 
-# --- BANCO DE DADOS DO COPERNICUS ---
+# --- DADOS COPERNICUS ---
 DATASETS = {
     "Clorofila-a (Algas)": {
         "dataset_id": "cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D",
@@ -95,21 +95,21 @@ def baixar_dados_coordenada(dataset_id, var, lat, lon, ano):
         return None
 
 # --- BARRA LATERAL ---
-st.sidebar.header("Painel de Controle")
+st.sidebar.header("Painel")
 modo_analise = st.sidebar.radio(
-    "Modo de Cobertura:",
-    ["📍 Hotspots Estáticos", "🌐 Qualquer Ponto do Brasil"]
+    "Modo de cobertura:",
+    ["📍 Hotspots estáticos", "🌐 Qualquer ponto do Brasil"]
 )
 ano_escolhido = st.sidebar.selectbox(
-    "Selecione o Ano de Análise:",
+    "Selecione o ano de análise:",
     ["2025", "2026"]
 )
 
 lat_alvo, lon_alvo = 0.0, 0.0
 slug_regiao, bounds, regiao_escolhida = "", [], ""
 
-if modo_analise == "📍 Hotspots Estáticos":
-    regiao_escolhida = st.sidebar.selectbox("Selecione a Região:", list(REGIOES.keys()))
+if modo_analise == "📍 Hotspots estáticos":
+    regiao_escolhida = st.sidebar.selectbox("Selecione a região:", list(REGIOES.keys()))
     slug_regiao = REGIOES[regiao_escolhida]["slug"]
     bounds = REGIOES[regiao_escolhida]["bounds"]
     lat_alvo = (bounds[2] + bounds[3]) / 2
@@ -118,13 +118,13 @@ else:
     st.sidebar.markdown("### Coordenadas do Brasil")
     lat_alvo = st.sidebar.number_input("Latitude (Ex: -23.0 para RJ):", min_value=-35.0, max_value=5.0, value=-23.00, step=0.1)
     lon_alvo = st.sidebar.number_input("Longitude (Ex: -43.1 para RJ):", min_value=-55.0, max_value=-30.0, value=-43.10, step=0.1)
-    if st.sidebar.button("📡 Buscar Novos Dados do Satélite"):
+    if st.sidebar.button("📡 Buscar novos dados do satélite"):
         st.sidebar.success("Novas coordenadas registradas! Aguarde o processamento.")
 
 # --- PROCESSAMENTO DOS ARQUIVOS ---
 def carregar_e_processar(variavel, ano):
     info = DATASETS[variavel]
-    if modo_analise == "📍 Hotspots Estáticos":
+    if modo_analise == "📍 Hotspots estáticos":
         arquivo = f"dados/{info['prefixo']}_{slug_regiao}_{ano}.nc"
         if os.path.exists(arquivo):
             return xr.open_dataset(arquivo), info["var"]
@@ -134,18 +134,18 @@ def carregar_e_processar(variavel, ano):
             return xr.open_dataset(arquivo), info["var"]
     return None, None
 
-tab_series, tab_correlacao = st.tabs(["📈 Séries Temporais", "📊 Análise de Correlação"])
+tab_series, tab_correlacao = st.tabs(["📈 Séries temporais", "📊 Análise de correlação"])
 
 # ==========================================
 # ABA 1: SÉRIES TEMPORAIS INDIVIDUAIS
 # ==========================================
 with tab_series:
-    variavel_escolhida = st.selectbox("Selecione a Variável para Visualização Diária:", list(DATASETS.keys()))
+    variavel_escolhida = st.selectbox("Selecione a variável para visualização diária:", list(DATASETS.keys()))
 
-    is_temp_2026 = (variavel_escolhida == "Temperatura da Superfície" and ano_escolhido == "2026")
+    is_temp_2026 = (variavel_escolhida == "Temperatura da superfície" and ano_escolhido == "2026")
     is_amazonas_turbidez = (
         variavel_escolhida == "Turbidez (Sedimentos)" and
-        modo_analise == "📍 Hotspots Estáticos" and
+        modo_analise == "📍 Hotspots estáticos" and
         regiao_escolhida == "Foz do Amazonas - AP/PA (Norte)"
     )
 
@@ -154,7 +154,7 @@ with tab_series:
     col_dados, col_mapa = st.columns([2, 1])
 
     with col_mapa:
-        st.markdown("### 📍 Área de Monitoramento")
+        st.markdown("### 📍 Área de monitoramento")
         df_mapa = pd.DataFrame({"latitude": [lat_alvo], "longitude": [lon_alvo]})
         st.map(df_mapa)
 
@@ -174,7 +174,7 @@ with tab_series:
                 maximo = df[var_nome].max()
                 minimo = df[var_nome].min()
 
-                if modo_analise == "📍 Hotspots Estáticos":
+                if modo_analise == "📍 Hotspots estáticos":
                     titulo_diag = f"📊 Diagnóstico: {variavel_escolhida} em {regiao_escolhida} ({ano_escolhido}){asterisco_red}"
                 else:
                     titulo_diag = f"📊 Diagnóstico: {variavel_escolhida} ({ano_escolhido}){asterisco_red}"
@@ -218,12 +218,12 @@ with tab_series:
 # ABA 2: ANÁLISE DE CORRELAÇÃO DE VARIÁVEIS
 # ==========================================
 with tab_correlacao:
-    st.subheader("📊 Cruzamento Estatístico de Dados Oceânicos")
+    st.subheader("📊 Cruzamento estatístico de dados oceânicos")
     col_sel_x, col_sel_y = st.columns(2)
     with col_sel_x:
-        var_x = st.selectbox("Variável Independente (Eixo X):", list(DATASETS.keys()), index=1)
+        var_x = st.selectbox("Variável independente (Eixo X):", list(DATASETS.keys()), index=1)
     with col_sel_y:
-        var_y = st.selectbox("Variável Dependente (Eixo Y):", list(DATASETS.keys()), index=0)
+        var_y = st.selectbox("Variável dependente (Eixo Y):", list(DATASETS.keys()), index=0)
 
     if var_x == var_y:
         st.warning("Aviso: Selecione duas variáveis distintas.")
@@ -253,7 +253,7 @@ with tab_correlacao:
                 with col_r:
                     st.metric("Coeficiente de Pearson (R)", f"{r_val:.3f}")
                 with col_desc:
-                    st.markdown("**Grau de Associação:** Coeficiente calculando o acoplamento ecológico entre as variáveis.")
+                    st.markdown("**Grau de associação:** Coeficiente calculando o acoplamento ecológico entre as variáveis.")
 
                 fig_scatter = px.scatter(
                     df_merged,
