@@ -179,7 +179,7 @@ with tab_series:
                 else:
                     titulo_diag = f"📊 Diagnóstico: {variavel_escolhida} ({ano_escolhido}){asterisco_red}"
 
-                st.subheader(titulo_diag)
+                st.markdown(f"### {titulo_diag}")
 
                 col_m1, col_m2, col_m3 = st.columns(3)
                 col_m1.metric("Média do Período", f"{media:.2f} {DATASETS[variavel_escolhida]['unidade']}")
