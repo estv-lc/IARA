@@ -24,7 +24,7 @@ DATASETS = {
         "cor": "green",
         "prefixo": "clorofila"
     },
-    "Temperatura da Superfície": {
+    "Temperatura da superfície": {
         "dataset_id": "METOFFICE-GLO-SST-L4-REP-OBS-SST",
         "var": "analysed_sst",
         "unidade": "°C",
